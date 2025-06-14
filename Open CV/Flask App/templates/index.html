@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Queue Monitor</title>
+  <!-- Google Fonts: Digital/Tech style -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.min.css">
+  <style>
+    body {
+      font-family: 'Share Tech Mono', 'Orbitron', 'Poppins', monospace, sans-serif;
+      background-color: #050510;
+      color: #39ff14;
+      margin: 0;
+      padding: 0;
+      position: relative;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Hi-tech SVG watermark */
+    .bg-watermark {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      opacity: 0.11;
+      z-index: 0;
+      background: url('{{ url_for("static", filename="hi-tech-med-bg.svg") }}') no-repeat center center;
+      background-size: cover;
+      pointer-events: none;
+      filter: blur(1.5px) grayscale(0.7);
+    }
+    /* Neon overlay */
+    .neon-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: radial-gradient(circle at 60% 40%, rgba(57,255,20,0.07) 0%, rgba(0,0,0,0.95) 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .container {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-around;
+      align-items: flex-start;
+      padding: 40px 20px 20px 20px;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 2;
+    }
+    .video-section {
+      flex: 1;
+      max-width: 480px;
+      padding: 10px;
+      border-radius: 16px;
+      background: rgba(27, 255, 112, 0.04);
+      box-shadow: 0 0 30px 0 #39ff14bb, 0 2px 24px #050510;
+      border: 2px solid #39ff14;
+      margin-bottom: 15px;
+    }
+    .video-section img {
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 0 18px #39ff1455;
+      background: #222;
+    }
+    .info-section {
+      flex: 1;
+      padding: 32px 24px;
+      background: rgba(20, 30, 25, 0.92);
+      border-radius: 16px;
+      margin-left: 40px;
+      min-width: 320px;
+      box-shadow: 0 0 32px #39ff1410, 0 4px 24px #050510;
+      border: 2px solid #0f0;
+      position: relative;
+    }
+    .info-section h2 {
+      margin-top: 0;
+      font-size: 2.0em;
+      letter-spacing: 2px;
+      color: #39ff14;
+      font-family: 'Orbitron', 'Share Tech Mono', monospace;
+      text-shadow: 0 0 12px #39ff14, 0 0 2px #fff;
+    }
+    .label {
+      font-size: 18px;
+      margin-top: 10px;
+      color: #95ffb2;
+      letter-spacing: 1.5px;
+      text-shadow: 0 0 8px #39ff1466;
+    }
+    .value {
+      font-size: 44px;
+      font-family: 'Orbitron', 'Share Tech Mono', monospace;
+      font-weight: 900;
+      color: #39ff14;
+      text-shadow: 0 0 16px #39ff14, 0 0 2px #fff;
+      margin-bottom: 12px;
+      letter-spacing: 3px;
+    }
+    .alert {
+      padding: 14px;
+      margin-top: 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      text-align: center;
+      font-size: 1.2em;
+      background: rgba(34, 255, 110, 0.09);
+      border: 2px solid #39ff14;
+      color: #39ff14;
+      box-shadow: 0 0 14px #39ff14;
+      transition: all 0.2s;
+      font-family: 'Share Tech Mono', 'Orbitron', monospace;
+    }
+    .alert.green {
+      background-color: rgba(34,255,110,0.11);
+      color: #39ff14;
+      border-color: #39ff14;
+      box-shadow: 0 0 18px #39ff1455;
+      animation: none;
+    }
+    .alert.red {
+      background-color: rgba(255, 60, 60, 0.19);
+      color: #fff;
+      border-color: #ff3c3c;
+      box-shadow: 0 0 18px #ff3c3c, 0 0 32px #ff3c3c44;
+      animation: pulse 1s infinite alternate;
+      text-shadow: 0 0 12px #fff, 0 0 2px #ff3c3c;
+    }
+    @keyframes pulse {
+      from { box-shadow: 0 0 8px #ff3c3c, 0 0 32px #ff3c3c44; }
+      to   { box-shadow: 0 0 28px #ff3c3c, 0 0 56px #ff3c3c88; }
+    }
+    .chart-section {
+      width: 90%;
+      max-width: 900px;
+      margin: 40px auto 0 auto;
+      background: rgba(24, 255, 88, 0.025);
+      border-radius: 16px;
+      padding: 28px 20px;
+      box-shadow: 0 0 24px #39ff1444;
+      border: 2px solid #39ff14;
+      position: relative;
+      z-index: 2;
+    }
+    canvas {
+      max-height: 240px;
+      background: #050510;
+      margin-bottom: 22px;
+      border-radius: 10px;
+      box-shadow: 0 0 12px #39ff1430;
+    }
+    .clock {
+      font-size: 2.1em;
+      margin-top: 32px;
+      color: #ffdf00;
+      text-align: center;
+      font-family: 'Orbitron', 'Share Tech Mono', monospace;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px #e9ff00, 0 0 2px #fff;
+    }
+    @media (max-width: 900px) {
+      .container { flex-direction: column; align-items: center; }
+      .info-section { margin-left: 0; margin-top: 24px; width: 100%; }
+      .video-section { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-watermark"></div>
+  <div class="neon-overlay"></div>
+
+  <div class="container">
+    <div class="video-section">
+      <img src="{{ url_for('video') }}" alt="Live Camera Feed" />
+    </div>
+    <div class="info-section">
+      <h2>Queue Monitor</h2>
+      <div class="label">People in Queue</div>
+      <div class="value" id="count">0</div>
+      <div class="label">Predicted Wait Time</div>
+      <div class="value" id="wait">0 min</div>
+      <div class="alert green" id="alertBox">✅ Queue under control.</div>
+      <div class="clock" id="clock">--:--:--</div>
+    </div>
+  </div>
+
+  <div class="chart-section">
+    <canvas id="lineChart"></canvas>
+    <canvas id="barChart"></canvas>
+  </div>
+
+  <audio id="alertSound" preload="auto">
+    <source src="{{ url_for('static', filename='Overcrowde.mp3') }}" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const lineCtx = document.getElementById("lineChart").getContext("2d");
+    const barCtx = document.getElementById("barChart").getContext("2d");
+
+    const lineChart = new Chart(lineCtx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "People Count (Line)",
+          data: [],
+          borderColor: "#39ff14",
+          backgroundColor: "rgba(57,255,20,0.18)",
+          borderWidth: 3,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        animation: { duration: 800 },
+        plugins: { legend: { labels: { color: "#39ff14" } } },
+        scales: {
+          x: { ticks: { color: "#82ffb6" }, grid: { color: "#1c3c22" } },
+          y: { ticks: { color: "#82ffb6" }, beginAtZero: true, grid: { color: "#1c3c22" } }
+        }
+      }
+    });
+
+    const barChart = new Chart(barCtx, {
+      type: "bar",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "People Count (Bar)",
+          data: [],
+          backgroundColor: "#39ff14"
+        }]
+      },
+      options: {
+        responsive: true,
+        animation: { duration: 1000 },
+        plugins: { legend: { labels: { color: "#39ff14" } } },
+        scales: {
+          x: { ticks: { color: "#82ffb6" }, grid: { color: "#1c3c22" } },
+          y: { ticks: { color: "#82ffb6" }, beginAtZero: true, grid: { color: "#1c3c22" } }
+        }
+      }
+    });
+
+    let soundPlayed = false;
+
+    function fetchData() {
+      fetch("/data")
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("count").innerText = data.people_count;
+          document.getElementById("wait").innerText = data.predicted_wait_time + " min";
+
+          const alertBox = document.getElementById("alertBox");
+          const alertSound = document.getElementById("alertSound");
+
+          alertBox.innerText = data.alert;
+          alertBox.className = "alert " + (data.people_count > 5 ? "red" : "green");
+
+          if (data.people_count > 5 && !soundPlayed) {
+            alertSound.play().catch(err => console.warn("Audio play failed:", err));
+            soundPlayed = true;
+          }
+          if (data.people_count <= 5) {
+            soundPlayed = false;
+          }
+
+          const labels = data.history.map(item => new Date(item.time * 1000).toLocaleTimeString());
+          const values = data.history.map(item => item.count);
+
+          lineChart.data.labels = labels;
+          lineChart.data.datasets[0].data = values;
+          lineChart.update();
+
+          barChart.data.labels = labels;
+          barChart.data.datasets[0].data = values;
+          barChart.update();
+        });
+    }
+
+    function updateClock() {
+      const now = new Date();
+      let h = String(now.getHours()).padStart(2, '0');
+      let m = String(now.getMinutes()).padStart(2, '0');
+      let s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById("clock").innerText = `${h}:${m}:${s}`;
+    }
+
+    setInterval(fetchData, 1000);
+    setInterval(updateClock, 1000);
+    updateClock();
+    
+  </script>
+</body>
+</html>
